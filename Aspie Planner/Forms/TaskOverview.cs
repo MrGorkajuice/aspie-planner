@@ -36,9 +36,18 @@ namespace Aspie_Planner
             InitializeComponent();
             // Load content file
             calendarContent = new CalendarContent("aspieplanner.data");
-            Height = calendarContent.PreferenceFormHeight;
-            Width = calendarContent.PreferenceFormWidth;
-            splitContainer1.SplitterDistance = calendarContent.PreferenceSplitterPosition;
+            try
+            {
+                Height = calendarContent.PreferenceFormHeight;
+                Width = calendarContent.PreferenceFormWidth;
+                splitContainer1.SplitterDistance = calendarContent.PreferenceSplitterPosition;
+            }
+            catch
+            {
+                Height = 480;
+                Width = 640;
+                splitContainer1.SplitterDistance = 200;
+            }
             // Set display dates - viewingDate is date of presently selected cell. viewRelativeDate is date of first column
             viewRelativeDate = DateTime.Now.Date;
             // Load icons
