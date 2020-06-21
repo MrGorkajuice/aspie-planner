@@ -35,7 +35,8 @@ namespace Aspie_Planner
         {
             InitializeComponent();
             // Load content file
-            calendarContent = new CalendarContent("aspieplanner.data");
+            //calendarContent = new CalendarContent("aspieplanner.data");
+            calendarContent = new CalendarContent();
             try
             {
                 Height = calendarContent.PreferenceFormHeight;
@@ -66,7 +67,6 @@ namespace Aspie_Planner
             taskListGrid.CurrentCellChanged += TaskListGrid_CurrentCellChanged;
             eventHistory.CellDoubleClick += EventHistory_CellDoubleClick;
             monthCalendar1.MouseWheel += MonthCalendar_MouseWheel;
-            Microsoft.Win32.SystemEvents.SessionEnding += SystemEvents_SessionEnding;
             FormClosing += TaskOverview_FormClosing;
             splitContainer1.SplitterMoved += SplitContainer1_SplitterMoved;
             SizeChanged += TaskOverview_SizeChanged;
@@ -92,13 +92,6 @@ namespace Aspie_Planner
         private void TaskOverview_FormClosing(object sender, FormClosingEventArgs e)
         {
             SaveNotes();
-            calendarContent.CloseFilestream();
-        }
-
-        // System shutdown event handler
-        private void SystemEvents_SessionEnding(object sender, Microsoft.Win32.SessionEndingEventArgs e)
-        {
-            calendarContent.CloseFilestream();
         }
 
         // Populate data in main form

@@ -4,11 +4,26 @@ using System.IO;
 using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Aspie_Planner
 {
     public class CalendarContent
     {
+        // Saved content
+        public int JsonVersion { get; set; } = 1;
+        public List<CalendarDateNote> calendarDateNotes { get; set; }
+        public List<CalendarRecurringTask> calendarRecurringTasks { get; set; }
+        public int PreferenceFormHeight { get; set; }
+        public int PreferenceFormWidth { get; set; }
+        public int PreferenceSplitterPosition { get; set; }
+        public List<KeyValuePair<DayOfWeek, TimeSpan>> PreferenceDayStart { get; set; }
+        public List<KeyValuePair<DayOfWeek, TimeSpan>> PreferenceDayEnd { get; set; }
+        public ColorDialog colorPicker { get; set; }
+        public string FirstChangelogItem { get; set; }
+        
+        // Internal items
         private enum ChangeEvent
         {
             TaskReorder,
@@ -24,63 +39,51 @@ namespace Aspie_Planner
             ChangeFormWidth,
             ChangeSplitterPosition
         }
-        private List<CalendarDateNote> calendarDateNotes;
-        private List<CalendarRecurringTask> calendarRecurringTasks;
         private FileStream changeLog;
-        private BinaryWriter changeLogWriter;
         private Boolean isParsingChangelog;
-        private Boolean isWorkingCopy = false;
-        public int PreferenceFormHeight { get; private set; }
-        public int PreferenceFormWidth { get; private set; }
-        public int PreferenceSplitterPosition { get; private set; }
-        public List<KeyValuePair<DayOfWeek, TimeSpan>> PreferenceDayStart, PreferenceDayEnd;
-        public ColorDialog colorPicker;
+        //private Boolean isWorkingCopy = false;
+        private string NextChangelogItem;
+        private JObject logBuffer;
 
-        // Creating, saving, loading...
-        // Empty calendar creation
         public CalendarContent()
         {
-            NewSetup();
-            SetupChangelog();
-        }
-
-        // Load by filename
-        public CalendarContent(string filename)
-        {
+            string filename = "aspieplannerdata.json";
             try
             {
-                try
+                bool UseJsonDataFile = File.Exists(filename);
+                if (UseJsonDataFile)
                 {
                     Directory.CreateDirectory("backups");
-                    string clgBackupFilename = @".\backups\" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".data";
-                    File.Copy(filename, clgBackupFilename, true);
+                    string backupFilename = @".\backups\" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".json";
+                    File.Copy(filename, backupFilename, true);
+                    string fileContent = File.ReadAllText(filename);
+                    InitFromText(fileContent);
                 }
-                catch { }
-                using (var stream = File.OpenRead(filename))
+                else
                 {
-                    InitFromStream(stream);
+                    filename = "aspieplanner.data";
+                    Directory.CreateDirectory("backups");
+                    string backupFilename = @".\backups\" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".data";
+                    File.Copy(filename, backupFilename, true);
+                    using (var stream = File.OpenRead(filename))
+                    {
+                        InitFromStream(stream);
+                    }
                 }
             }
-            catch
+            catch (Exception e)
             {
                 NewSetup();
-                SetupChangelog();
+                PrepareChangelogging();
                 SaveCalendar();
             }
         }
 
-        // Load by filestream
-        public CalendarContent(FileStream stream)
-        {
-            InitFromStream(stream);
-        }
         private CalendarContent(bool isCloning)
         {
             NewSetup();
             if (!isCloning)
-                SetupChangelog();
-            else
-                isWorkingCopy = true;
+                PrepareChangelogging();
         }
 
         public CalendarContent Clone()
@@ -94,6 +97,7 @@ namespace Aspie_Planner
                 result.calendarRecurringTasks.Add(task.Clone());
             return result;
         }
+
         // Check content file version and forward processing accordingly
         private void InitFromStream(FileStream stream)
         {
@@ -117,9 +121,132 @@ namespace Aspie_Planner
                 stream.Dispose();
                 ProcessChangeLogV6();
             }
-            else
-                NewSetup();
-            SetupChangelog();
+        }
+
+        private void InitFromText(string content)
+        {
+            JObject jObject = JObject.Parse(content);
+            calendarDateNotes = jObject.SelectToken("calendarDateNotes").ToObject<List<CalendarDateNote>>();
+            calendarRecurringTasks = jObject.SelectToken("calendarRecurringTasks").ToObject<List<CalendarRecurringTask>>();
+            PreferenceFormHeight = jObject.SelectToken("PreferenceFormHeight").ToObject<int>();
+            PreferenceFormWidth = jObject.SelectToken("PreferenceFormWidth").ToObject<int>();
+            PreferenceSplitterPosition = jObject.SelectToken("PreferenceSplitterPosition").ToObject<int>();
+            PreferenceDayStart = jObject.SelectToken("PreferenceDayStart").ToObject<List<KeyValuePair<DayOfWeek, TimeSpan>>>();
+            PreferenceDayEnd = jObject.SelectToken("PreferenceDayEnd").ToObject<List<KeyValuePair<DayOfWeek, TimeSpan>>>();
+            colorPicker = jObject.SelectToken("colorPicker").ToObject<ColorDialog>();
+            FirstChangelogItem = jObject.SelectToken("FirstChangelogItem").ToObject<string>();
+            ProcessJsonChangeLog();
+            SaveCalendar();
+        }
+
+        private void ProcessJsonChangeLog()
+        {
+            bool Done = false;
+            isParsingChangelog = true;
+            string filename = @".\changelog\" + FirstChangelogItem + ".json";
+            while (!Done)
+            {
+                try
+                {
+                    string fileContent = File.ReadAllText(filename);
+                    JObject jObject = JObject.Parse(fileContent);
+                    ChangeEvent eventType = (ChangeEvent)jObject.SelectToken("EventType").Value<int>();
+                    CalendarRecurringTask.ReccuranceType recurranceType;
+                    CalendarRecurringTask.TimeType timeType;
+                    List<string> weekdays;
+                    int dayRangeX, dayRangeY;
+                    TimeSpan timeLower, timeUpper, duration;
+                    string description;
+                    Color textColor, backColor;
+                    DateTime dateTime;
+                    string taskGuid; 
+                    switch (eventType)
+                    {
+                        case ChangeEvent.TaskReorder:
+                            CalendarRecurringTask reorderTask = GetTask(jObject.SelectToken("Guid").Value<string>());
+                            int position = jObject.SelectToken("Position").Value<int>();
+                            AssignTaskPosition(reorderTask, position);
+                            break;
+                        case ChangeEvent.AddTask:
+                            recurranceType = (CalendarRecurringTask.ReccuranceType)jObject.SelectToken("RecurranceType").Value<int>();
+                            timeType = (CalendarRecurringTask.TimeType)jObject.SelectToken("TimeType").Value<int>();
+                            weekdays = jObject.SelectToken("Weekdays").Value<List<string>>();
+                            dayRangeX = jObject.SelectToken("DayRangeLower").Value<int>();
+                            dayRangeY = jObject.SelectToken("DayRangeUpper").Value<int>();
+                            timeLower = new TimeSpan(0, jObject.SelectToken("TimeLower").Value<int>(), 0);
+                            timeUpper = new TimeSpan(0, jObject.SelectToken("TimeUpper").Value<int>(), 0);
+                            duration = new TimeSpan(0, jObject.SelectToken("Duration").Value<int>(), 0);
+                            description = jObject.SelectToken("Description").Value<string>();
+                            textColor = Color.FromArgb(jObject.SelectToken("TextColor").Value<int>());
+                            backColor = Color.FromArgb(jObject.SelectToken("BackColor").Value<int>());
+                            dateTime = jObject.SelectToken("Date").Value<DateTime>();
+                            taskGuid = jObject.SelectToken("Guid").Value<string>();
+                            calendarRecurringTasks.Add(new CalendarRecurringTask(recurranceType, timeType, weekdays, dayRangeX, dayRangeY,
+                                timeLower, timeUpper, duration, description, textColor, backColor, dateTime, taskGuid));
+                            break;
+                        case ChangeEvent.ModifyTask:
+                            recurranceType = (CalendarRecurringTask.ReccuranceType)jObject.SelectToken("RecurranceType").Value<int>();
+                            timeType = (CalendarRecurringTask.TimeType)jObject.SelectToken("TimeType").Value<int>();
+                            weekdays = jObject.SelectToken("Weekdays").Value<List<string>>();
+                            dayRangeX = jObject.SelectToken("DayRangeLower").Value<int>();
+                            dayRangeY = jObject.SelectToken("DayRangeUpper").Value<int>();
+                            timeLower = new TimeSpan(0, jObject.SelectToken("TimeLower").Value<int>(), 0);
+                            timeUpper = new TimeSpan(0, jObject.SelectToken("TimeUpper").Value<int>(), 0);
+                            duration = new TimeSpan(0, jObject.SelectToken("Duration").Value<int>(), 0);
+                            description = jObject.SelectToken("Description").Value<string>();
+                            textColor = Color.FromArgb(jObject.SelectToken("TextColor").Value<int>());
+                            backColor = Color.FromArgb(jObject.SelectToken("BackColor").Value<int>());
+                            dateTime = jObject.SelectToken("Date").Value<DateTime>();
+                            taskGuid = jObject.SelectToken("Guid").Value<string>();
+                            calendarRecurringTasks.Add(new CalendarRecurringTask(recurranceType, timeType, weekdays, dayRangeX, dayRangeY,
+                                timeLower, timeUpper, duration, description, textColor, backColor, dateTime, taskGuid));
+                            CalendarRecurringTask loadedTask = GetTask(taskGuid);
+                            loadedTask.Modify(recurranceType, timeType, weekdays, dayRangeX, dayRangeY, timeLower, timeUpper,
+                                duration, description, textColor, backColor, dateTime);
+                            break;
+                        case ChangeEvent.DoTask:
+                            CalendarRecurringTask toDoTask = GetTask(jObject.SelectToken("Guid").Value<string>());
+                            toDoTask.DoTask(jObject.SelectToken("Date").Value<DateTime>());
+                            break;
+                        case ChangeEvent.UndoTask:
+                            CalendarRecurringTask toUndoTask = GetTask(jObject.SelectToken("Guid").Value<string>());
+                            toUndoTask.UndoTask(jObject.SelectToken("Date").Value<DateTime>());
+                            break;
+                        case ChangeEvent.AddNotesToDay:
+                            dateTime = jObject.SelectToken("Date").Value<DateTime>();
+                            description = jObject.SelectToken("Description").Value<string>();
+                            ChangeDayNotes(dateTime, description);
+                            break;
+                        case ChangeEvent.AddNotesToTask:
+                            CalendarRecurringTask toNoteTask = GetTask(jObject.SelectToken("Guid").Value<string>());
+                            dateTime = jObject.SelectToken("Date").Value<DateTime>();
+                            description = jObject.SelectToken("Description").Value<string>();
+                            toNoteTask.SetNote(dateTime, description);
+                            break;
+                        case ChangeEvent.DeleteTask:
+                            DeleteTask(jObject.SelectToken("Guid").Value<string>());
+                            break;
+                        case ChangeEvent.ModifyCustomColors:
+                            colorPicker.CustomColors = jObject.SelectToken("Colors").Value<int[]>();
+                            break;
+                        case ChangeEvent.ChangeFormHeight:
+                            PreferenceFormHeight = jObject.SelectToken("FormHeight").Value<int>();
+                            break;
+                        case ChangeEvent.ChangeFormWidth:
+                            PreferenceFormWidth = jObject.SelectToken("FormWidth").Value<int>();
+                            break;
+                        case ChangeEvent.ChangeSplitterPosition:
+                            PreferenceSplitterPosition = jObject.SelectToken("SplitterPosition").Value<int>();
+                            break;
+                    }
+                    filename = @".\changelog\" + jObject.SelectToken("NextLogItem").Value<string>() + ".json";
+                }
+                catch
+                {
+                    Done = true;
+                }
+            }
+            isParsingChangelog = false;
         }
 
         // Initialize content lists when creating empty calendar
@@ -135,10 +262,11 @@ namespace Aspie_Planner
         }
 
         // Prepare new changelog
-        private void SetupChangelog()
+        private void PrepareChangelogging()
         {
-            changeLog = File.Create("aspieplanner.clg");
-            changeLogWriter = new BinaryWriter(changeLog);
+            FirstChangelogItem = Guid.NewGuid().ToString();
+            NextChangelogItem = FirstChangelogItem;
+            Directory.CreateDirectory("changelog");
             isParsingChangelog = false;
         }
 
@@ -688,74 +816,21 @@ namespace Aspie_Planner
             DefaultAvailableHours();
         }
 
-        // Write content file using current format (Version 6)
+        // Write content file using current format (JSON 1)
         private void SaveCalendar()
         {
-            using (var stream = File.Create("aspieplanner.data"))
-            {
-                var writer = new BinaryWriter(stream);
-                writer.Write(-6);
-                writer.Write(PreferenceFormHeight);
-                writer.Write(PreferenceFormWidth);
-                writer.Write(PreferenceSplitterPosition);
-                writer.Write(calendarDateNotes.Count);
-                writer.Write(calendarRecurringTasks.Count);
-                foreach (CalendarDateNote ce in calendarDateNotes)
-                {
-                    writer.Write(ce.GetDate().ToBinary());
-                    writer.Write(ce.GetNote());
-                }
-                foreach (CalendarRecurringTask rt in calendarRecurringTasks)
-                {
-                    writer.Write(rt.TaskGuid.ToString());
-                    writer.Write(rt.OffsetDate.ToBinary());
-                    writer.Write(rt.TaskDescription);
-                    writer.Write(rt.TextColor.ToArgb());
-                    writer.Write(rt.BackColor.ToArgb());
-                    if (rt.Weekdays != null)
-                    {
-                        writer.Write(rt.Weekdays.Count);
-                        for (int i = 0; i < rt.Weekdays.Count; i++)
-                        {
-                            writer.Write(rt.Weekdays[i]);
-                        }
-                    }
-                    else
-                        writer.Write(0);
-                    writer.Write((int)rt.TaskReccuranceType);
-                    writer.Write((int)rt.TaskTimeType);
-                    writer.Write(rt.DayRangeLower);
-                    writer.Write(rt.DayRangeUpper);
-                    writer.Write((int)rt.TimeParamLower.TotalMinutes);
-                    writer.Write((int)rt.TimeParamUpper.TotalMinutes);
-                    writer.Write((int)rt.GetDuration().TotalMinutes);
-                    writer.Write(rt.DatesDone.Count());
-                    foreach (DateTime dt in rt.DatesDone)
-                    {
-                        writer.Write(dt.ToBinary());
-                    }
-                    writer.Write(rt.TaskNotes.Count());
-                    foreach (TaskNote tn in rt.TaskNotes)
-                    {
-                        writer.Write(tn.GetDate().ToBinary());
-                        writer.Write(tn.GetNote());
-                    }
-                }
-                writer.Write(colorPicker.CustomColors.Count());
-                foreach (int color in colorPicker.CustomColors)
-                {
-                    writer.Write(color);
-                }
-            }
+            PrepareChangelogging();
+            File.WriteAllText("aspieplannerdata.json", JsonConvert.SerializeObject(this, Formatting.Indented));
         }
 
         // Content access methods
         // 
         internal void ChangeDayNotes(DateTime date, string description)
         {
-            LogChange((int)ChangeEvent.AddNotesToDay);
-            LogChange(date.ToBinary());
-            LogChange(description);
+            InitLogEntry(ChangeEvent.AddNotesToDay);
+            AddLogDetail("Date", date);
+            AddLogDetail("Description", description);
+            CloseLogEntry();
             CalendarDateNote datesNote = GetDaysNotes(date);
             if (datesNote == null && !string.IsNullOrEmpty(description))
                 calendarDateNotes.Add(new CalendarDateNote(date, description));
@@ -787,24 +862,21 @@ namespace Aspie_Planner
 
         internal void AddRecurringTask(CalendarRecurringTask newTask)
         {
-            LogChange((int)ChangeEvent.AddTask);
-            LogChange((int)newTask.TaskReccuranceType);
-            LogChange((int)newTask.TaskTimeType);
-            LogChange(newTask.Weekdays.Count());
-            foreach (string s in newTask.Weekdays)
-            {
-                LogChange(s);
-            }
-            LogChange(newTask.DayRangeLower);
-            LogChange(newTask.DayRangeUpper);
-            LogChange((int)newTask.TimeParamLower.TotalMinutes);
-            LogChange((int)newTask.TimeParamUpper.TotalMinutes);
-            LogChange((int)newTask.GetDuration().TotalMinutes);
-            LogChange(newTask.TaskDescription);
-            LogChange(newTask.TextColor.ToArgb());
-            LogChange(newTask.BackColor.ToArgb());
-            LogChange(newTask.OffsetDate.ToBinary());
-            LogChange(newTask.TaskGuid.ToString());
+            InitLogEntry(ChangeEvent.AddTask);
+            AddLogDetail("RecurranceType", (int)newTask.TaskReccuranceType);
+            AddLogDetail("TimeType", (int)newTask.TaskTimeType);
+            AddLogDetail("Weekdays", newTask.Weekdays);
+            AddLogDetail("DayRangeLower", newTask.DayRangeLower);
+            AddLogDetail("DayRangeUpper", newTask.DayRangeUpper);
+            AddLogDetail("TimeLower", (int)newTask.TimeParamLower.TotalMinutes);
+            AddLogDetail("TimeUpper", (int)newTask.TimeParamUpper.TotalMinutes);
+            AddLogDetail("Duration", (int)newTask.GetDuration().TotalMinutes);
+            AddLogDetail("Description", newTask.TaskDescription);
+            AddLogDetail("TextColor", newTask.TextColor.ToArgb());
+            AddLogDetail("BackCOlor", newTask.BackColor.ToArgb());
+            AddLogDetail("OffsetDate", newTask.OffsetDate);
+            AddLogDetail("Guid", newTask.TaskGuid.ToString());
+            CloseLogEntry();
             calendarRecurringTasks.Add(newTask);
         }
 
@@ -844,17 +916,19 @@ namespace Aspie_Planner
 
         internal void DeleteTask(string guid)
         {
-            LogChange((int)ChangeEvent.DeleteTask);
-            LogChange(guid);
+            InitLogEntry(ChangeEvent.DeleteTask);
+            AddLogDetail("Guid", guid);
+            CloseLogEntry();
             CalendarRecurringTask taskToDelete = GetTask(guid);
             calendarRecurringTasks.Remove(taskToDelete);
         }
 
         internal void AssignTaskPosition(CalendarRecurringTask theTask, int position)
         {
-            LogChange((int)ChangeEvent.TaskReorder);
-            LogChange(theTask.TaskGuid.ToString());
-            LogChange(position);
+            InitLogEntry(ChangeEvent.TaskReorder);
+            AddLogDetail("Guid", theTask.TaskGuid.ToString());
+            AddLogDetail("Position", position);
+            CloseLogEntry();
             int oldPosition = calendarRecurringTasks.FindIndex(x => x == theTask);
             calendarRecurringTasks.RemoveAt(oldPosition);
             if (position >= 0 && position < calendarRecurringTasks.Count)
@@ -877,101 +951,105 @@ namespace Aspie_Planner
                                  Color backColor,
                                  DateTime offsetDate)
         {
-            LogChange((int)ChangeEvent.ModifyTask);
-            LogChange((int)reccuranceType);
-            LogChange((int)timeType);
-            LogChange(weekdays.Count());
-            foreach (string s in weekdays)
-            {
-                LogChange(s);
-            }
-            LogChange(dayRangeLower);
-            LogChange(dayRangeUpper);
-            LogChange((int)timeLower.TotalMinutes);
-            LogChange((int)timeUpper.TotalMinutes);
-            LogChange((int)duration.TotalMinutes);
-            LogChange(taskDescription);
-            LogChange(textColor.ToArgb());
-            LogChange(backColor.ToArgb());
-            LogChange(offsetDate.ToBinary());
-            LogChange(theTask.TaskGuid.ToString());
-
+            InitLogEntry(ChangeEvent.ModifyTask);
+            AddLogDetail("RecurranceType", (int)reccuranceType);
+            AddLogDetail("TimeType", (int)timeType);
+            AddLogDetail("Weekdays", weekdays);
+            AddLogDetail("DayRangeLower", dayRangeLower);
+            AddLogDetail("DayRangeUpper", dayRangeUpper);
+            AddLogDetail("TimeLower", (int)timeLower.TotalMinutes);
+            AddLogDetail("TimeUpper", (int)timeUpper.TotalMinutes);
+            AddLogDetail("Duration", (int)duration.TotalMinutes);
+            AddLogDetail("Description", taskDescription);
+            AddLogDetail("TextColor", textColor.ToArgb());
+            AddLogDetail("BackColor", backColor.ToArgb());
+            AddLogDetail("OffsetDate", offsetDate);
+            AddLogDetail("Guid", theTask.TaskGuid.ToString());
+            CloseLogEntry();
             theTask.Modify(reccuranceType, timeType, weekdays, dayRangeLower, dayRangeUpper, timeLower, timeUpper, duration,
                 taskDescription, textColor, backColor, offsetDate);
         }
 
         internal void DoTask(CalendarRecurringTask task, DateTime date)
         {
-            LogChange((int)ChangeEvent.DoTask);
-            LogChange(task.TaskGuid.ToString());
-            LogChange(date.ToBinary());
+            InitLogEntry(ChangeEvent.DoTask);
+            AddLogDetail("Guid", task.TaskGuid.ToString());
+            AddLogDetail("Date", date);
+            CloseLogEntry();
             task.DoTask(date);
         }
 
         internal void UndoTask(CalendarRecurringTask task, DateTime date)
         {
-            LogChange((int)ChangeEvent.UndoTask);
-            LogChange(task.TaskGuid.ToString());
-            LogChange(date.ToBinary());
+            InitLogEntry(ChangeEvent.UndoTask);
+            AddLogDetail("Guid", task.TaskGuid.ToString());
+            AddLogDetail("Date", date);
+            CloseLogEntry();
             task.UndoTask(date);
         }
 
         internal void AddNoteToTask(CalendarRecurringTask task, DateTime date, string text)
         {
-            LogChange((int)ChangeEvent.AddNotesToTask);
-            LogChange(task.TaskGuid.ToString());
-            LogChange(date.ToBinary());
-            LogChange(text);
+            InitLogEntry(ChangeEvent.AddNotesToTask);
+            AddLogDetail("Guid", task.TaskGuid.ToString());
+            AddLogDetail("Date", date);
+            AddLogDetail("Text", text);
+            CloseLogEntry();
             task.SetNote(date, text);
         }
 
         internal void LogUpdateCustomColors()
         {
-            LogChange((int)ChangeEvent.ModifyCustomColors);
-            LogChange(colorPicker.CustomColors.Count());
-            foreach (int i in colorPicker.CustomColors)
-            {
-                LogChange(i);
-            }
-        }
-
-        internal void CloseFilestream()
-        {
-            changeLog.Dispose();
+            InitLogEntry(ChangeEvent.ModifyCustomColors);
+            AddLogDetail("CustomColors", colorPicker.CustomColors);
+            CloseLogEntry();
         }
 
         internal void UpdateFormHeight(int newFormHeight)
         {
-            LogChange((int)ChangeEvent.ChangeFormHeight);
-            LogChange(newFormHeight);
+            InitLogEntry(ChangeEvent.ChangeFormHeight);
+            AddLogDetail("FormHeight", newFormHeight);
+            CloseLogEntry();
         }
 
         internal void UpdateFormWidth(int newFormWidth)
         {
-            LogChange((int)ChangeEvent.ChangeFormWidth);
-            LogChange(newFormWidth);
+            InitLogEntry(ChangeEvent.ChangeFormWidth);
+            AddLogDetail("FormWidth", newFormWidth);
+            CloseLogEntry();
         }
 
         internal void UpdateSplitterPosition(int newSplitterPosition)
         {
-            LogChange((int)ChangeEvent.ChangeSplitterPosition);
-            LogChange(newSplitterPosition);
+            InitLogEntry(ChangeEvent.ChangeSplitterPosition);
+            AddLogDetail("SplitterPosition", newSplitterPosition);
+            CloseLogEntry();
         }
 
-        private void LogChange(int item)
+        private void InitLogEntry(ChangeEvent logEventType)
         {
-            if (!isWorkingCopy & !isParsingChangelog)
-                changeLogWriter.Write(item);
+            if (!isParsingChangelog)
+            {
+                logBuffer = new JObject();
+                logBuffer.Add(new JProperty("EventType", logEventType));
+            }
         }
-        private void LogChange(long item)
+
+        private void AddLogDetail(string property, object value)
         {
-            if (!isWorkingCopy & !isParsingChangelog)
-                changeLogWriter.Write(item);
+            if (!isParsingChangelog)
+                logBuffer.Add(new JProperty(property, value));
         }
-        private void LogChange(string item)
+
+        private void CloseLogEntry()
         {
-            if (!isWorkingCopy & !isParsingChangelog)
-                changeLogWriter.Write(item);
+            if (!isParsingChangelog)
+            {
+                string ThisChangelogItem = NextChangelogItem;
+                NextChangelogItem = Guid.NewGuid().ToString();
+                logBuffer.Add(new JProperty("NextLogItem", NextChangelogItem));
+                File.WriteAllText(@".\changelog\" + ThisChangelogItem + ".json", JsonConvert.SerializeObject(logBuffer, Formatting.Indented));
+            }
         }
     }
 }

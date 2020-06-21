@@ -29,21 +29,28 @@ namespace Aspie_Planner
             RangeTime
         }
 
-        public ReccuranceType TaskReccuranceType { get; private set; }
-        public TimeType TaskTimeType { get; private set; }
-        public List<string> Weekdays { get; private set; }
-        public int DayRangeLower { get; private set; }
-        public int DayRangeUpper { get; private set; }
-        public TimeSpan TimeParamLower { get; private set; }
-        public TimeSpan TimeParamUpper { get; private set; }
+        public ReccuranceType TaskReccuranceType { get; set; }
+        public TimeType TaskTimeType { get; set; }
+        public List<string> Weekdays { get; set; }
+        public int DayRangeLower { get; set; }
+        public int DayRangeUpper { get; set; }
+        public TimeSpan TimeParamLower { get; set; }
+        public TimeSpan TimeParamUpper { get; set; }
         private TimeSpan Duration;
-        public DateTime OffsetDate { get; private set; }
-        public string TaskDescription { get; private set; }
-        public Guid TaskGuid { get; private set; }
-        public List<DateTime> DatesDone { get; private set; }
-        public List<TaskNote> TaskNotes { get; private set; }
-        public Color TextColor { get; private set; }
-        public Color BackColor { get; private set; }
+        public DateTime OffsetDate { get; set; }
+        public string TaskDescription { get; set; }
+        public Guid TaskGuid { get; set; }
+        public List<DateTime> DatesDone { get; set; }
+        public List<TaskNote> TaskNotes { get; set; }
+        public Color TextColor { get; set; }
+        public Color BackColor { get; set; }
+
+        public CalendarRecurringTask()
+        {
+            Weekdays = new List<string>();
+            DatesDone = new List<DateTime>();
+            TaskNotes = new List<TaskNote>();
+        }
 
         public CalendarRecurringTask(ReccuranceType reccuranceType,
                                      TimeType timeType,
@@ -112,8 +119,8 @@ namespace Aspie_Planner
 
         public CalendarRecurringTask Clone()
         {
-            CalendarRecurringTask result = new CalendarRecurringTask(this.TaskReccuranceType, this.TaskTimeType, this.Weekdays, 
-                this.DayRangeLower, this.DayRangeUpper, this.TimeParamLower, this.TimeParamUpper, this.Duration, this.TaskDescription, 
+            CalendarRecurringTask result = new CalendarRecurringTask(this.TaskReccuranceType, this.TaskTimeType, this.Weekdays,
+                this.DayRangeLower, this.DayRangeUpper, this.TimeParamLower, this.TimeParamUpper, this.Duration, this.TaskDescription,
                 this.TextColor, this.BackColor, this.OffsetDate, this.TaskGuid.ToString());
             result.DatesDone = new List<DateTime>(this.DatesDone);
             return result;
@@ -184,10 +191,10 @@ namespace Aspie_Planner
                     return TaskStatus.Critical;
                 else if (TaskReccuranceType == ReccuranceType.XToYDays)
                 {
-                    if ((DatesDone.Count > 0 && DatesDone.Max().AddDays(DayRangeUpper) <= checkDate) || 
+                    if ((DatesDone.Count > 0 && DatesDone.Max().AddDays(DayRangeUpper) <= checkDate) ||
                         (DatesDone.Count == 0 && OffsetDate.AddDays(DayRangeUpper) <= checkDate))
                         return TaskStatus.Critical;
-                    else if ((DatesDone.Count > 0 && DatesDone.Max().AddDays(DayRangeLower) <= checkDate) || 
+                    else if ((DatesDone.Count > 0 && DatesDone.Max().AddDays(DayRangeLower) <= checkDate) ||
                              (DatesDone.Count == 0 && OffsetDate.AddDays(DayRangeLower) <= checkDate))
                         return TaskStatus.Incomplete;
                     else
@@ -247,7 +254,7 @@ namespace Aspie_Planner
         public TimeSpan GetDuration()
         {
             TimeSpan result;
-            switch(TaskTimeType)
+            switch (TaskTimeType)
             {
                 case TimeType.SetTime:
                     result = TimeParamUpper - TimeParamLower;

@@ -4,8 +4,8 @@ namespace Aspie_Planner
 {
     public class CalendarDateNote
     {
-        private DateTime eventDate;
-        private string eventNotes;
+        public DateTime eventDate { get; set; }
+        public string eventNotes { get; set; }
 
         public CalendarDateNote(DateTime newEventdate, string newEventNotes)
         {
