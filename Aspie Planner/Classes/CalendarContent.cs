@@ -143,12 +143,12 @@ namespace Aspie_Planner
         {
             bool Done = false;
             isParsingChangelog = true;
-            string filename = @".\changelog\" + FirstChangelogItem + ".json";
+            string filename = FirstChangelogItem + ".json";
             while (!Done)
             {
                 try
                 {
-                    string fileContent = File.ReadAllText(filename);
+                    string fileContent = File.ReadAllText(@".\changelog\" + filename);
                     JObject jObject = JObject.Parse(fileContent);
                     ChangeEvent eventType = (ChangeEvent)jObject.SelectToken("EventType").Value<int>();
                     CalendarRecurringTask.ReccuranceType recurranceType;
@@ -239,7 +239,8 @@ namespace Aspie_Planner
                             PreferenceSplitterPosition = jObject.SelectToken("SplitterPosition").Value<int>();
                             break;
                     }
-                    filename = @".\changelog\" + jObject.SelectToken("NextLogItem").Value<string>() + ".json";
+                    File.Move(@".\changelog\" + filename, @".\backups\" + filename);
+                    filename = jObject.SelectToken("NextLogItem").Value<string>() + ".json";
                 }
                 catch
                 {
