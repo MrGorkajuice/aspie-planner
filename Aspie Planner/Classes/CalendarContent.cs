@@ -220,7 +220,7 @@ namespace Aspie_Planner
                         case ChangeEvent.AddNotesToTask:
                             CalendarRecurringTask toNoteTask = GetTask(jObject.SelectToken("Guid").Value<string>());
                             dateTime = jObject.SelectToken("Date").Value<DateTime>();
-                            description = jObject.SelectToken("Description").Value<string>();
+                            description = jObject.SelectToken("Text").Value<string>();
                             toNoteTask.SetNote(dateTime, description);
                             break;
                         case ChangeEvent.DeleteTask:
