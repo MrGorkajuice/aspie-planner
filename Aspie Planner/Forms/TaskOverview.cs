@@ -169,7 +169,7 @@ namespace Aspie_Planner
         // Populate history
         private void PopulateEventHistory()
         {
-            if (taskListGrid.CurrentCellAddress.Y != 0)
+            if (taskListGrid.CurrentCellAddress.Y > 0)
             {
                 try
                 {
