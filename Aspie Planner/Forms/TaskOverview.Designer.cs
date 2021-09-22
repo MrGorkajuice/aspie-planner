@@ -352,6 +352,7 @@
             this.foreslåDagsprogramToolStripMenuItem.Name = "foreslåDagsprogramToolStripMenuItem";
             this.foreslåDagsprogramToolStripMenuItem.Size = new System.Drawing.Size(181, 22);
             this.foreslåDagsprogramToolStripMenuItem.Text = "Foreslå Ugeprogram";
+            this.foreslåDagsprogramToolStripMenuItem.Visible = false;
             this.foreslåDagsprogramToolStripMenuItem.Click += new System.EventHandler(this.foreslåDagsprogramToolStripMenuItem_Click);
             // 
             // indstillingerToolStripMenuItem
@@ -362,6 +363,7 @@
             this.indstillingerToolStripMenuItem.Name = "indstillingerToolStripMenuItem";
             this.indstillingerToolStripMenuItem.Size = new System.Drawing.Size(81, 20);
             this.indstillingerToolStripMenuItem.Text = "Indstillinger";
+            this.indstillingerToolStripMenuItem.Visible = false;
             // 
             // ugeplanlægningToolStripMenuItem
             // 

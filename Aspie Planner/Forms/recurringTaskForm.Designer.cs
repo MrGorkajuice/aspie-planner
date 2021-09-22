@@ -346,6 +346,7 @@
             this.timePickerRangeEstimatedLength.ShowUpDown = true;
             this.timePickerRangeEstimatedLength.Size = new System.Drawing.Size(51, 20);
             this.timePickerRangeEstimatedLength.TabIndex = 12;
+            this.timePickerRangeEstimatedLength.Visible = false;
             // 
             // labelEstimatedDuration
             // 
@@ -357,6 +358,7 @@
             this.labelEstimatedDuration.Size = new System.Drawing.Size(91, 13);
             this.labelEstimatedDuration.TabIndex = 13;
             this.labelEstimatedDuration.Text = "Forventet længde";
+            this.labelEstimatedDuration.Visible = false;
             // 
             // timePickerRangeTo
             // 
@@ -368,6 +370,7 @@
             this.timePickerRangeTo.ShowUpDown = true;
             this.timePickerRangeTo.Size = new System.Drawing.Size(51, 20);
             this.timePickerRangeTo.TabIndex = 11;
+            this.timePickerRangeTo.Visible = false;
             // 
             // labelRangeTimeTo
             // 
@@ -378,6 +381,7 @@
             this.labelRangeTimeTo.Size = new System.Drawing.Size(14, 13);
             this.labelRangeTimeTo.TabIndex = 10;
             this.labelRangeTimeTo.Text = "til";
+            this.labelRangeTimeTo.Visible = false;
             // 
             // timePickerRangeFrom
             // 
@@ -389,6 +393,7 @@
             this.timePickerRangeFrom.ShowUpDown = true;
             this.timePickerRangeFrom.Size = new System.Drawing.Size(54, 20);
             this.timePickerRangeFrom.TabIndex = 8;
+            this.timePickerRangeFrom.Visible = false;
             // 
             // labelRangeTimeFrom
             // 
@@ -400,6 +405,7 @@
             this.labelRangeTimeFrom.Size = new System.Drawing.Size(22, 13);
             this.labelRangeTimeFrom.TabIndex = 9;
             this.labelRangeTimeFrom.Text = "Fra";
+            this.labelRangeTimeFrom.Visible = false;
             // 
             // labelRangeTimeDesc
             // 
@@ -410,6 +416,7 @@
             this.labelRangeTimeDesc.Size = new System.Drawing.Size(82, 13);
             this.labelRangeTimeDesc.TabIndex = 7;
             this.labelRangeTimeDesc.Text = "Tidsrum for start";
+            this.labelRangeTimeDesc.Visible = false;
             // 
             // rbRangeTime
             // 
@@ -423,6 +430,7 @@
             this.rbRangeTime.TabStop = true;
             this.rbRangeTime.Text = "Fleksibel tid";
             this.rbRangeTime.UseVisualStyleBackColor = true;
+            this.rbRangeTime.Visible = false;
             this.rbRangeTime.CheckedChanged += new System.EventHandler(this.RbRangeTime_CheckedChanged);
             // 
             // rbNoTime
@@ -437,6 +445,7 @@
             this.rbNoTime.TabStop = true;
             this.rbNoTime.Text = "Uspecificeret tid";
             this.rbNoTime.UseVisualStyleBackColor = true;
+            this.rbNoTime.Visible = false;
             this.rbNoTime.CheckedChanged += new System.EventHandler(this.RbNoTime_CheckedChanged);
             // 
             // timePickerSetTo
@@ -449,6 +458,7 @@
             this.timePickerSetTo.ShowUpDown = true;
             this.timePickerSetTo.Size = new System.Drawing.Size(51, 20);
             this.timePickerSetTo.TabIndex = 4;
+            this.timePickerSetTo.Visible = false;
             // 
             // labelSetTimeTo
             // 
@@ -459,6 +469,7 @@
             this.labelSetTimeTo.Size = new System.Drawing.Size(14, 13);
             this.labelSetTimeTo.TabIndex = 3;
             this.labelSetTimeTo.Text = "til";
+            this.labelSetTimeTo.Visible = false;
             // 
             // timePickerSetFrom
             // 
@@ -470,6 +481,7 @@
             this.timePickerSetFrom.ShowUpDown = true;
             this.timePickerSetFrom.Size = new System.Drawing.Size(54, 20);
             this.timePickerSetFrom.TabIndex = 1;
+            this.timePickerSetFrom.Visible = false;
             // 
             // labelSetTimeFrom
             // 
@@ -481,6 +493,7 @@
             this.labelSetTimeFrom.Size = new System.Drawing.Size(22, 13);
             this.labelSetTimeFrom.TabIndex = 2;
             this.labelSetTimeFrom.Text = "Fra";
+            this.labelSetTimeFrom.Visible = false;
             // 
             // rbSetTime
             // 
@@ -494,6 +507,7 @@
             this.rbSetTime.TabStop = true;
             this.rbSetTime.Text = "Fast tid";
             this.rbSetTime.UseVisualStyleBackColor = true;
+            this.rbSetTime.Visible = false;
             this.rbSetTime.CheckedChanged += new System.EventHandler(this.RbSetTime_CheckedChanged);
             // 
             // RecurringTaskForm
