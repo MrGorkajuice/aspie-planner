@@ -339,6 +339,7 @@
             // timePickerRangeEstimatedLength
             // 
             this.timePickerRangeEstimatedLength.CustomFormat = "HH:mm";
+            this.timePickerRangeEstimatedLength.Enabled = false;
             this.timePickerRangeEstimatedLength.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.timePickerRangeEstimatedLength.Location = new System.Drawing.Point(115, 141);
             this.timePickerRangeEstimatedLength.Name = "timePickerRangeEstimatedLength";
@@ -349,6 +350,7 @@
             // labelEstimatedDuration
             // 
             this.labelEstimatedDuration.AutoSize = true;
+            this.labelEstimatedDuration.Enabled = false;
             this.labelEstimatedDuration.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelEstimatedDuration.Location = new System.Drawing.Point(18, 144);
             this.labelEstimatedDuration.Name = "labelEstimatedDuration";
@@ -359,6 +361,7 @@
             // timePickerRangeTo
             // 
             this.timePickerRangeTo.CustomFormat = "HH:mm";
+            this.timePickerRangeTo.Enabled = false;
             this.timePickerRangeTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.timePickerRangeTo.Location = new System.Drawing.Point(128, 115);
             this.timePickerRangeTo.Name = "timePickerRangeTo";
@@ -369,6 +372,7 @@
             // labelRangeTimeTo
             // 
             this.labelRangeTimeTo.AutoSize = true;
+            this.labelRangeTimeTo.Enabled = false;
             this.labelRangeTimeTo.Location = new System.Drawing.Point(107, 117);
             this.labelRangeTimeTo.Name = "labelRangeTimeTo";
             this.labelRangeTimeTo.Size = new System.Drawing.Size(14, 13);
@@ -378,6 +382,7 @@
             // timePickerRangeFrom
             // 
             this.timePickerRangeFrom.CustomFormat = "HH:mm";
+            this.timePickerRangeFrom.Enabled = false;
             this.timePickerRangeFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.timePickerRangeFrom.Location = new System.Drawing.Point(46, 115);
             this.timePickerRangeFrom.Name = "timePickerRangeFrom";
@@ -388,6 +393,7 @@
             // labelRangeTimeFrom
             // 
             this.labelRangeTimeFrom.AutoSize = true;
+            this.labelRangeTimeFrom.Enabled = false;
             this.labelRangeTimeFrom.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelRangeTimeFrom.Location = new System.Drawing.Point(18, 118);
             this.labelRangeTimeFrom.Name = "labelRangeTimeFrom";
@@ -398,6 +404,7 @@
             // labelRangeTimeDesc
             // 
             this.labelRangeTimeDesc.AutoSize = true;
+            this.labelRangeTimeDesc.Enabled = false;
             this.labelRangeTimeDesc.Location = new System.Drawing.Point(18, 99);
             this.labelRangeTimeDesc.Name = "labelRangeTimeDesc";
             this.labelRangeTimeDesc.Size = new System.Drawing.Size(82, 13);
@@ -407,6 +414,7 @@
             // rbRangeTime
             // 
             this.rbRangeTime.AutoSize = true;
+            this.rbRangeTime.Enabled = false;
             this.rbRangeTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.rbRangeTime.Location = new System.Drawing.Point(4, 76);
             this.rbRangeTime.Name = "rbRangeTime";
@@ -420,6 +428,7 @@
             // rbNoTime
             // 
             this.rbNoTime.AutoSize = true;
+            this.rbNoTime.Enabled = false;
             this.rbNoTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.rbNoTime.Location = new System.Drawing.Point(4, 4);
             this.rbNoTime.Name = "rbNoTime";
@@ -433,6 +442,7 @@
             // timePickerSetTo
             // 
             this.timePickerSetTo.CustomFormat = "HH:mm";
+            this.timePickerSetTo.Enabled = false;
             this.timePickerSetTo.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.timePickerSetTo.Location = new System.Drawing.Point(128, 56);
             this.timePickerSetTo.Name = "timePickerSetTo";
@@ -443,6 +453,7 @@
             // labelSetTimeTo
             // 
             this.labelSetTimeTo.AutoSize = true;
+            this.labelSetTimeTo.Enabled = false;
             this.labelSetTimeTo.Location = new System.Drawing.Point(107, 58);
             this.labelSetTimeTo.Name = "labelSetTimeTo";
             this.labelSetTimeTo.Size = new System.Drawing.Size(14, 13);
@@ -452,6 +463,7 @@
             // timePickerSetFrom
             // 
             this.timePickerSetFrom.CustomFormat = "HH:mm";
+            this.timePickerSetFrom.Enabled = false;
             this.timePickerSetFrom.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.timePickerSetFrom.Location = new System.Drawing.Point(46, 56);
             this.timePickerSetFrom.Name = "timePickerSetFrom";
@@ -462,6 +474,7 @@
             // labelSetTimeFrom
             // 
             this.labelSetTimeFrom.AutoSize = true;
+            this.labelSetTimeFrom.Enabled = false;
             this.labelSetTimeFrom.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelSetTimeFrom.Location = new System.Drawing.Point(18, 59);
             this.labelSetTimeFrom.Name = "labelSetTimeFrom";
@@ -472,6 +485,7 @@
             // rbSetTime
             // 
             this.rbSetTime.AutoSize = true;
+            this.rbSetTime.Enabled = false;
             this.rbSetTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.rbSetTime.Location = new System.Drawing.Point(4, 30);
             this.rbSetTime.Name = "rbSetTime";

@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             this.taskListGrid = new System.Windows.Forms.DataGridView();
             this.todaysNotes = new System.Windows.Forms.TextBox();
             this.monthCalendar1 = new System.Windows.Forms.MonthCalendar();
@@ -79,14 +79,14 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.taskListGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.Color.DeepSkyBlue;
-            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.taskListGrid.DefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.Color.DeepSkyBlue;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.taskListGrid.DefaultCellStyle = dataGridViewCellStyle1;
             this.taskListGrid.EnableHeadersVisualStyles = false;
             this.taskListGrid.Location = new System.Drawing.Point(3, 3);
             this.taskListGrid.Name = "taskListGrid";
@@ -348,6 +348,7 @@
             // 
             // foreslåDagsprogramToolStripMenuItem
             // 
+            this.foreslåDagsprogramToolStripMenuItem.Enabled = false;
             this.foreslåDagsprogramToolStripMenuItem.Name = "foreslåDagsprogramToolStripMenuItem";
             this.foreslåDagsprogramToolStripMenuItem.Size = new System.Drawing.Size(181, 22);
             this.foreslåDagsprogramToolStripMenuItem.Text = "Foreslå Ugeprogram";
@@ -357,6 +358,7 @@
             // 
             this.indstillingerToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.ugeplanlægningToolStripMenuItem});
+            this.indstillingerToolStripMenuItem.Enabled = false;
             this.indstillingerToolStripMenuItem.Name = "indstillingerToolStripMenuItem";
             this.indstillingerToolStripMenuItem.Size = new System.Drawing.Size(81, 20);
             this.indstillingerToolStripMenuItem.Text = "Indstillinger";

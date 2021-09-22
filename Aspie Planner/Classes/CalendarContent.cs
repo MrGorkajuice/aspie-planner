@@ -898,7 +898,7 @@ namespace Aspie_Planner
             AddLogDetail("Duration", (int)newTask.GetDuration().TotalMinutes);
             AddLogDetail("Description", newTask.TaskDescription);
             AddLogDetail("TextColor", newTask.TextColor.ToArgb());
-            AddLogDetail("BackCOlor", newTask.BackColor.ToArgb());
+            AddLogDetail("BackColor", newTask.BackColor.ToArgb());
             AddLogDetail("OffsetDate", newTask.OffsetDate);
             AddLogDetail("Guid", newTask.TaskGuid.ToString());
             CloseLogEntry();
