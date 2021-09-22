@@ -201,9 +201,7 @@ namespace Aspie_Planner
                     }
                     calendarContent.AddRecurringTask(new CalendarRecurringTask(recurranceType, timeType, weekdaysPicked, rangeLower, rangeUpper,
                         timeLower, timeUpper, duration, description.Text, taskForeColor, taskBackColor, offsetDate));
-                    statusMessage.Text = "Begivenhed gemt";
-                    statusMessage.ForeColor = Color.Black;
-                    statusMessage.Visible = true;
+                    Close();
                 }
             }
             else
