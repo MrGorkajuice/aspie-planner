@@ -117,7 +117,7 @@ namespace Aspie_Planner
                 int rangeLower = 0, rangeUpper = 0;
                 TimeSpan timeLower = TimeSpan.Zero, timeUpper = TimeSpan.Zero, duration = TimeSpan.Zero;
                 DateTime offsetDate = new DateTime();
-                Boolean taskReady = false;
+                bool taskReady = false;
                 switch(selectedRecurranceType)
                 {
                     case CalendarRecurringTask.ReccuranceType.XToYDays:
