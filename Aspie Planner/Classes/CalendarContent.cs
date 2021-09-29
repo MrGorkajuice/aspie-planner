@@ -143,7 +143,7 @@ namespace Aspie_Planner
         {
             try
             {
-                T result = jObject.SelectToken(TokenName).Value<T>();
+                T result = jObject.SelectToken(TokenName).ToObject<T>();
                 return result;
             }
             catch
