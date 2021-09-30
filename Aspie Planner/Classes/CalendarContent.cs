@@ -206,23 +206,16 @@ namespace Aspie_Planner
                         case ChangeEvent.ModifyTask:
                             recurranceType = (CalendarRecurringTask.ReccuranceType)jObject.SelectToken("RecurranceType").Value<int>();
                             timeType = (CalendarRecurringTask.TimeType)jObject.SelectToken("TimeType").Value<int>();
-                            try
-                            {
-                                weekdays = jObject.SelectToken("Weekdays").Value<List<string>>();
-                            }
-                            catch 
-                            {
-                                weekdays = null;
-                            }
-                            dayRangeX = jObject.SelectToken("DayRangeLower").Value<int>();
-                            dayRangeY = jObject.SelectToken("DayRangeUpper").Value<int>();
-                            timeLower = new TimeSpan(0, jObject.SelectToken("TimeLower").Value<int>(), 0);
-                            timeUpper = new TimeSpan(0, jObject.SelectToken("TimeUpper").Value<int>(), 0);
-                            duration = new TimeSpan(0, jObject.SelectToken("Duration").Value<int>(), 0);
-                            description = jObject.SelectToken("Description").Value<string>();
-                            textColor = Color.FromArgb(jObject.SelectToken("TextColor").Value<int>());
-                            backColor = Color.FromArgb(jObject.SelectToken("BackColor").Value<int>());
-                            dateTime = jObject.SelectToken("OffsetDate").Value<DateTime>();
+                            weekdays = SelectTokenSafe<List<string>>(jObject, "Weekdays");
+                            dayRangeX = SelectTokenSafe<int>(jObject, "DayRangeLower");
+                            dayRangeY = SelectTokenSafe<int>(jObject, "DayRangeUpper");
+                            timeLower = new TimeSpan(0, SelectTokenSafe<int>(jObject, "TimeLower"), 0);
+                            timeUpper = new TimeSpan(0, SelectTokenSafe<int>(jObject, "TimeUpper"), 0);
+                            duration = new TimeSpan(0, SelectTokenSafe<int>(jObject, "Duration"), 0);
+                            description = SelectTokenSafe<string>(jObject, "Description");
+                            textColor = SafeColor(Color.FromArgb(SelectTokenSafe<int>(jObject, "TextColor")));
+                            backColor = SafeColor(Color.FromArgb(SelectTokenSafe<int>(jObject, "BackColor")));
+                            dateTime = SelectTokenSafe<DateTime>(jObject, "OffsetDate");
                             taskGuid = jObject.SelectToken("Guid").Value<string>();
                             CalendarRecurringTask loadedTask = GetTask(taskGuid);
                             loadedTask.Modify(recurranceType, timeType, weekdays, dayRangeX, dayRangeY, timeLower, timeUpper,
