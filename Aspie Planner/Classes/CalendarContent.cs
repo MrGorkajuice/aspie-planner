@@ -71,7 +71,7 @@ namespace Aspie_Planner
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 NewSetup();
                 PrepareChangelogging();

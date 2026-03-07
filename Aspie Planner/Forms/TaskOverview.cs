@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace Aspie_Planner
@@ -24,16 +25,25 @@ namespace Aspie_Planner
         //CalendarRecurringTask viewingTask;
         DateTime viewRelativeDate;
         Bitmap iconRed, iconGreen, iconYellow, iconBlank, iconExclamation;
+        // Pre-computed cache: [statusIndex 0-3, hasNote 0-1]
+        // Status indices: 0=Complete, 1=Incomplete, 2=Critical, 3=Any
+        Bitmap[,] iconCache;
         Point lastCellCoordinates;
 
         private Rectangle dragBoxFromMouseDown;
         private int rowIndexFromMouseDown;
         private int rowIndexOfItemUnderMouseToDrop;
+        // Backing list for virtual-mode row data; reference to calendarContent.calendarRecurringTasks
+        private List<CalendarRecurringTask> _tasks;
 
         // Initialization of main form, run on startup
         public TaskOverview()
         {
             InitializeComponent();
+            // Enable double-buffering on the DataGridView to eliminate repaint flicker
+            typeof(DataGridView).InvokeMember("DoubleBuffered",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty,
+                null, taskListGrid, new object[] { true });
             // Load content file
             //calendarContent = new CalendarContent("aspieplanner.data");
             calendarContent = new CalendarContent();
@@ -57,6 +67,8 @@ namespace Aspie_Planner
             iconYellow = LoadIcon(@"customIcons\yellow.png", Properties.Resources.yellow);
             iconExclamation = LoadIcon(@"customIcons\exclamation.png", Properties.Resources.exclamation_mark);
             iconBlank = LoadIcon(@"customIcons\blank.png", Properties.Resources.blank);
+            // Pre-compute the 8 possible icon bitmaps (4 statuses × note present/absent)
+            BuildIconCache();
             // Bind event handlers
             taskListGrid.CellDoubleClick += TaskListGrid_CellDoubleClick;
             taskListGrid.MouseClick += TaskListGrid_MouseClick;
@@ -65,6 +77,10 @@ namespace Aspie_Planner
             taskListGrid.DragOver += TaskListGrid_DragOver;
             taskListGrid.DragDrop += TaskListGrid_DragDrop;
             taskListGrid.CurrentCellChanged += TaskListGrid_CurrentCellChanged;
+            // Virtual-mode handlers: supply cell values, tooltips and per-cell colors on demand
+            taskListGrid.CellValueNeeded += TaskListGrid_CellValueNeeded;
+            taskListGrid.CellToolTipTextNeeded += TaskListGrid_CellToolTipTextNeeded;
+            taskListGrid.CellFormatting += TaskListGrid_CellFormatting;
             eventHistory.CellDoubleClick += EventHistory_CellDoubleClick;
             monthCalendar1.MouseWheel += MonthCalendar_MouseWheel;
             FormClosing += TaskOverview_FormClosing;
@@ -97,73 +113,66 @@ namespace Aspie_Planner
         // Populate data in main form
         public void RepopulateViews()
         {
-            taskListGrid.Columns.Clear();
-            taskListGrid.RowHeadersWidth = 210;
-            taskNotes.Text = null;
-            //recentNotes.Text = null;
-            DataGridViewRow dgvRow;
-            DataGridViewImageColumn dgvImgCol;
-            DataGridViewImageCell dgvImgCell;
-            for (int i = 0; i < displayDays; i++)
+            taskListGrid.SuspendLayout();
+            try
             {
-                dgvImgCol = new DataGridViewImageColumn();
-                dgvImgCol.Tag = viewRelativeDate.AddDays(i);
-                dgvImgCol.HeaderText = viewRelativeDate.AddDays(i).ToString(dateFormat);
-                dgvImgCol.DefaultCellStyle.NullValue = null;
-                dgvImgCol.Width = gridWidth;
-                dgvImgCol.HeaderCell.Style.WrapMode = DataGridViewTriState.True;
-                dgvImgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                if (viewRelativeDate.AddDays(i) == DateTime.Now.Date)
-                {
-                    dgvImgCol.DefaultCellStyle.BackColor = Color.Lavender;
-                    dgvImgCol.HeaderCell.Style.BackColor = Color.Lavender;
-                }
-                else
-                    dgvImgCol.DefaultCellStyle.BackColor = Color.White;
-                taskListGrid.Columns.Add(dgvImgCol);
-            }
-            dgvRow = (DataGridViewRow)taskListGrid.RowTemplate.Clone();
-            dgvRow.CreateCells(taskListGrid);
-            dgvRow.HeaderCell.Value = "Noter";
-            dgvRow.HeaderCell.Style.Font = taskFont;
-            for (int i = 0; i < displayDays; i++)
-            {
-                if (calendarContent.GetDaysNotes(viewRelativeDate.AddDays(i)) != null)
-                {
-                    dgvImgCell = new DataGridViewImageCell();
-                    dgvImgCell.Value = iconExclamation;
-                    dgvImgCell.ToolTipText = "Note";
-                    dgvRow.Cells[i] = dgvImgCell;
-                }
-            }
-            dgvRow.Height = gridHeight;
-            taskListGrid.Rows.Add(dgvRow);
-            foreach (CalendarRecurringTask rt in calendarContent.GetRecurringTasks())
-            {
-                dgvRow = (DataGridViewRow)taskListGrid.RowTemplate.Clone();
-                dgvRow.CreateCells(taskListGrid);
-                dgvRow.DefaultCellStyle.BackColor = rt.BackColor;
-                dgvRow.DefaultCellStyle.ForeColor = rt.TextColor;
-                dgvRow.Tag = rt;
-                dgvRow.HeaderCell.Value = rt.TaskDescription;
-                dgvRow.HeaderCell.Style.BackColor = rt.BackColor;
-                dgvRow.HeaderCell.Style.ForeColor = rt.TextColor;
-                dgvRow.HeaderCell.Style.Font = taskFont;
+                taskListGrid.Columns.Clear();
+                taskListGrid.RowHeadersWidth = 210;
+                taskNotes.Text = null;
 
+                // Build date columns
                 for (int i = 0; i < displayDays; i++)
                 {
-                    dgvRow.Cells[i] = TaskCell(rt, viewRelativeDate.AddDays(i));
-                    int colorR, colorB, colorG;
-                    colorR = (dgvRow.DefaultCellStyle.BackColor.R * taskListGrid.Columns[i].DefaultCellStyle.BackColor.R) / 255;
-                    colorG = (dgvRow.DefaultCellStyle.BackColor.G * taskListGrid.Columns[i].DefaultCellStyle.BackColor.G) / 255;
-                    colorB = (dgvRow.DefaultCellStyle.BackColor.B * taskListGrid.Columns[i].DefaultCellStyle.BackColor.B) / 255;
-                    Color cellColor = Color.FromArgb(colorR, colorG, colorB);
-                    dgvRow.Cells[i].Style.BackColor = cellColor;
+                    DateTime colDate = viewRelativeDate.AddDays(i);
+                    DataGridViewImageColumn dgvImgCol = new DataGridViewImageColumn();
+                    dgvImgCol.Tag = colDate;
+                    dgvImgCol.HeaderText = colDate.ToString(dateFormat);
+                    dgvImgCol.DefaultCellStyle.NullValue = null;
+                    dgvImgCol.Width = gridWidth;
+                    dgvImgCol.HeaderCell.Style.WrapMode = DataGridViewTriState.True;
+                    dgvImgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    if (colDate == DateTime.Now.Date)
+                    {
+                        dgvImgCol.DefaultCellStyle.BackColor = Color.Lavender;
+                        dgvImgCol.HeaderCell.Style.BackColor = Color.Lavender;
+                    }
+                    else
+                        dgvImgCol.DefaultCellStyle.BackColor = Color.White;
+                    taskListGrid.Columns.Add(dgvImgCol);
                 }
-                dgvRow.Height = gridHeight;
-                taskListGrid.Rows.Add(dgvRow);
+
+                // Capture current task list and size the virtual row collection
+                _tasks = calendarContent.GetRecurringTasks();
+                taskListGrid.RowCount = 1 + _tasks.Count;
+
+                // Row 0: day notes header row
+                DataGridViewRow notesRow = taskListGrid.Rows[0];
+                notesRow.HeaderCell.Value = "Noter";
+                notesRow.HeaderCell.Style.Font = taskFont;
+                notesRow.Height = gridHeight;
+
+                // Rows 1..N: one per recurring task — set header and style metadata only;
+                // cell values are provided on demand via CellValueNeeded
+                for (int i = 0; i < _tasks.Count; i++)
+                {
+                    CalendarRecurringTask rt = _tasks[i];
+                    DataGridViewRow row = taskListGrid.Rows[i + 1];
+                    row.Tag = rt;
+                    row.DefaultCellStyle.BackColor = rt.BackColor;
+                    row.DefaultCellStyle.ForeColor = rt.TextColor;
+                    row.HeaderCell.Value = rt.TaskDescription;
+                    row.HeaderCell.Style.BackColor = rt.BackColor;
+                    row.HeaderCell.Style.ForeColor = rt.TextColor;
+                    row.HeaderCell.Style.Font = taskFont;
+                    row.Height = gridHeight;
+                }
+
+                monthCalendar1.BoldedDates = calendarContent.GetAllDates().ToArray();
             }
-            monthCalendar1.BoldedDates = calendarContent.GetAllDates().ToArray();
+            finally
+            {
+                taskListGrid.ResumeLayout();
+            }
         }
 
         // Populate history
@@ -276,6 +285,91 @@ namespace Aspie_Planner
             return result;
         }
 
+        // Pre-compute all 8 composite icon bitmaps (4 task statuses × note present/absent).
+        // These are shared across all cells; no per-cell bitmap allocation is needed.
+        private void BuildIconCache()
+        {
+            Bitmap[] baseIcons = { iconGreen, iconYellow, iconRed, iconBlank };
+            iconCache = new Bitmap[4, 2];
+            for (int s = 0; s < 4; s++)
+            {
+                for (int n = 0; n < 2; n++)
+                {
+                    Bitmap bmp = new Bitmap(iconSize, iconSize, PixelFormat.Format32bppArgb);
+                    using (var g = Graphics.FromImage(bmp))
+                    {
+                        g.CompositingMode = CompositingMode.SourceOver;
+                        g.DrawImage(baseIcons[s], 0, 0);
+                        if (n == 1)
+                            g.DrawImage(iconExclamation, 0, 0);
+                    }
+                    iconCache[s, n] = bmp;
+                }
+            }
+        }
+
+        private Bitmap GetCachedIcon(CalendarRecurringTask.TaskStatus status, bool hasNote)
+        {
+            int s;
+            switch (status)
+            {
+                case CalendarRecurringTask.TaskStatus.Complete:   s = 0; break;
+                case CalendarRecurringTask.TaskStatus.Incomplete: s = 1; break;
+                case CalendarRecurringTask.TaskStatus.Critical:   s = 2; break;
+                default:                                          s = 3; break;
+            }
+            return iconCache[s, hasNote ? 1 : 0];
+        }
+
+        // Virtual-mode handler: provides cell image values on demand (only for visible cells)
+        private void TaskListGrid_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || e.RowIndex < 0 || _tasks == null) return;
+            DateTime date = (DateTime)taskListGrid.Columns[e.ColumnIndex].Tag;
+            if (e.RowIndex == 0)
+            {
+                e.Value = calendarContent.GetDaysNotes(date) != null ? iconExclamation : null;
+            }
+            else if (e.RowIndex - 1 < _tasks.Count)
+            {
+                CalendarRecurringTask task = _tasks[e.RowIndex - 1];
+                e.Value = GetCachedIcon(task.GetStatus(date), !string.IsNullOrEmpty(task.GetNote(date)));
+            }
+        }
+
+        // Virtual-mode handler: provides tooltip text on demand
+        private void TaskListGrid_CellToolTipTextNeeded(object sender, DataGridViewCellToolTipTextNeededEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || e.RowIndex <= 0 || _tasks == null) return;
+            if (e.RowIndex - 1 >= _tasks.Count) return;
+            DateTime date = (DateTime)taskListGrid.Columns[e.ColumnIndex].Tag;
+            switch (_tasks[e.RowIndex - 1].GetStatus(date))
+            {
+                case CalendarRecurringTask.TaskStatus.Complete:   e.ToolTipText = "Færdig";    break;
+                case CalendarRecurringTask.TaskStatus.Incomplete: e.ToolTipText = "Bør gøres"; break;
+                case CalendarRecurringTask.TaskStatus.Critical:   e.ToolTipText = "Vigtig!";   break;
+            }
+        }
+
+        // Virtual-mode handler: applies the multiplicative color blend of row (task) and column (today highlight)
+        // background colors. Only fires for visible cells, so no upfront per-cell computation is needed.
+        private void TaskListGrid_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex <= 0 || e.ColumnIndex < 0 || _tasks == null) return;
+            if (e.RowIndex - 1 >= _tasks.Count) return;
+            Color rowColor = _tasks[e.RowIndex - 1].BackColor;
+            Color colColor = taskListGrid.Columns[e.ColumnIndex].DefaultCellStyle.BackColor;
+            // For White columns the multiplicative blend is a no-op; only compute for Lavender (today)
+            if (colColor == Color.White || colColor.IsEmpty)
+                e.CellStyle.BackColor = rowColor;
+            else
+                e.CellStyle.BackColor = Color.FromArgb(
+                    (rowColor.R * colColor.R) / 255,
+                    (rowColor.G * colColor.G) / 255,
+                    (rowColor.B * colColor.B) / 255);
+            e.FormattingApplied = true;
+        }
+
         // Resizing icons
         public static Bitmap ResizeImage(Image image, int width, int height)
         {
@@ -302,36 +396,19 @@ namespace Aspie_Planner
             return destImage;
         }
 
-        // Set state for a cell
+        // Build a DataGridViewImageCell using the cached icon bitmaps (used for the eventHistory grid)
         private DataGridViewImageCell TaskCell(CalendarRecurringTask task, DateTime date)
         {
-            DataGridViewImageCell result = new DataGridViewImageCell();
-            Bitmap resultIcon = new Bitmap(iconSize, iconSize, PixelFormat.Format32bppArgb);
-            var graphics = Graphics.FromImage(resultIcon);
-            graphics.CompositingMode = CompositingMode.SourceOver;
             CalendarRecurringTask.TaskStatus status = task.GetStatus(date);
+            bool hasNote = !string.IsNullOrEmpty(task.GetNote(date));
+            DataGridViewImageCell result = new DataGridViewImageCell();
+            result.Value = GetCachedIcon(status, hasNote);
             switch (status)
             {
-                case CalendarRecurringTask.TaskStatus.Complete:
-                    graphics.DrawImage(iconGreen, 0, 0);
-                    result.ToolTipText = "Færdig";
-                    break;
-                case CalendarRecurringTask.TaskStatus.Incomplete:
-                    graphics.DrawImage(iconYellow, 0, 0);
-                    result.ToolTipText = "Bør gøres";
-                    break;
-                case CalendarRecurringTask.TaskStatus.Critical:
-                    graphics.DrawImage(iconRed, 0, 0);
-                    result.ToolTipText = "Vigtig!";
-                    break;
-                default:
-                    graphics.DrawImage(iconBlank, 0, 0);
-                    break;
+                case CalendarRecurringTask.TaskStatus.Complete:   result.ToolTipText = "Færdig";    break;
+                case CalendarRecurringTask.TaskStatus.Incomplete: result.ToolTipText = "Bør gøres"; break;
+                case CalendarRecurringTask.TaskStatus.Critical:   result.ToolTipText = "Vigtig!";   break;
             }
-            string note = task.GetNote(date);
-            if (!string.IsNullOrEmpty(note))
-                graphics.DrawImage(iconExclamation, 0, 0);
-            result.Value = resultIcon;
             return result;
         }
 
@@ -367,17 +444,15 @@ namespace Aspie_Planner
                 DateTime lastDate = (DateTime)taskListGrid.Columns[lastCellCoordinates.X].Tag;
                 CalendarRecurringTask lastTask = (CalendarRecurringTask)taskListGrid.Rows[lastCellCoordinates.Y].Tag;
                 calendarContent.AddNoteToTask(lastTask, lastDate, taskNotes.Text);
-                taskListGrid[lastCellCoordinates.X, lastCellCoordinates.Y] = TaskCell(lastTask, lastDate);
+                // Invalidate only the affected cell; CellValueNeeded will re-query the updated status
+                taskListGrid.InvalidateCell(lastCellCoordinates.X, lastCellCoordinates.Y);
             }
 
             if (todaysNotes.Modified)
             {
                 DateTime lastDate = (DateTime)taskListGrid.Columns[lastCellCoordinates.X].Tag;
                 calendarContent.ChangeDayNotes(lastDate, todaysNotes.Text);
-                if (!String.IsNullOrEmpty(todaysNotes.Text))
-                    ((DataGridViewImageCell)taskListGrid[lastCellCoordinates.X, 0]).Value = iconExclamation;
-                else
-                    ((DataGridViewImageCell)taskListGrid[lastCellCoordinates.X, 0]).Value = null;
+                taskListGrid.InvalidateCell(lastCellCoordinates.X, 0);
             }
         }
 
@@ -501,25 +576,32 @@ namespace Aspie_Planner
                 else
                 {
                     taskDate = (DateTime)taskListGrid.Columns[e.ColumnIndex].Tag;
+                    bool changed = false;
                     // Do/undo task
                     switch (task.GetStatus(taskDate))
                     {
                         case CalendarRecurringTask.TaskStatus.Complete:
                             calendarContent.UndoTask(task, taskDate);
-                            RepopulateViews();
+                            changed = true;
                             break;
                         case CalendarRecurringTask.TaskStatus.Critical:
                         case CalendarRecurringTask.TaskStatus.Incomplete:
                             calendarContent.DoTask(task, taskDate);
-                            RepopulateViews();
+                            changed = true;
                             break;
                         default:
                             if (task.TaskReccuranceType == CalendarRecurringTask.ReccuranceType.XToYDays)
                             {
                                 calendarContent.DoTask(task, taskDate);
-                                RepopulateViews();
+                                changed = true;
                             }
                             break;
+                    }
+                    if (changed)
+                    {
+                        // Repaint only the affected row; CellValueNeeded re-queries status from updated data
+                        taskListGrid.InvalidateRow(e.RowIndex);
+                        monthCalendar1.BoldedDates = calendarContent.GetAllDates().ToArray();
                     }
                 }
             }
@@ -580,7 +662,8 @@ namespace Aspie_Planner
         private void OnUndoClick(object sender, EventArgs e)
         {
             ((TaskDay)((MenuItem)sender).Tag).SetUndone();
-            RepopulateViews();
+            InvalidateTaskRow(((TaskDay)((MenuItem)sender).Tag).task);
+            monthCalendar1.BoldedDates = calendarContent.GetAllDates().ToArray();
         }
 
         private void nyOpgaveToolStripMenuItem_Click(object sender, EventArgs e)
@@ -604,7 +687,16 @@ namespace Aspie_Planner
         private void OnDoneClick(object sender, EventArgs e)
         {
             ((TaskDay)((MenuItem)sender).Tag).SetDone();
-            RepopulateViews();
+            InvalidateTaskRow(((TaskDay)((MenuItem)sender).Tag).task);
+            monthCalendar1.BoldedDates = calendarContent.GetAllDates().ToArray();
+        }
+
+        // Repaints the grid row for a given task without rebuilding the grid structure
+        private void InvalidateTaskRow(CalendarRecurringTask task)
+        {
+            int taskIndex = _tasks != null ? _tasks.IndexOf(task) : -1;
+            if (taskIndex >= 0)
+                taskListGrid.InvalidateRow(taskIndex + 1);
         }
 
         // Processing "Delete" click

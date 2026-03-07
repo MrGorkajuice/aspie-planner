@@ -93,6 +93,7 @@
             this.taskListGrid.ReadOnly = true;
             this.taskListGrid.Size = new System.Drawing.Size(912, 274);
             this.taskListGrid.TabIndex = 1;
+            this.taskListGrid.VirtualMode = true;
             // 
             // todaysNotes
             // 
