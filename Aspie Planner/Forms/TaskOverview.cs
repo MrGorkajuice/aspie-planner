@@ -218,7 +218,10 @@ namespace Aspie_Planner
                         dgvRow.Tag = dateOfInterest;
                         eventHistory.Rows.Add(dgvRow);
                     }
-                    eventHistory.CurrentCell.Selected = false;
+                    if (eventHistory.CurrentCell != null)
+                    {
+                        eventHistory.CurrentCell.Selected = false;
+                    }
                 }
                 catch { }
             }
